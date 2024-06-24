@@ -36,8 +36,8 @@ fi
 cd
 
 # Grab base playbook+sig from the internets
-curl https://raw.githubusercontent.com/LastCallMedia/proto-ansible/main/bootstrap.yml > bootstrap.yml
-curl https://raw.githubusercontent.com/LastCallMedia/proto-ansible/main/bootstrap.yml.sig > bootstrap.yml.sig
+curl https://raw.githubusercontent.com/kayla-lcm/proto-ansible/main/bootstrap.yml > bootstrap.yml
+curl https://raw.githubusercontent.com/kayla-lcm/proto-ansible/main/bootstrap.yml.sig > bootstrap.yml.sig
 
 # Verify and run base playbook
 if ssh-keygen -Y verify -f ~/bootstrap_signature -I kayla@lastcallmedia.com \
