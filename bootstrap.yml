@@ -1,0 +1,172 @@
+---
+- hosts: localhost
+  connection: local
+
+  vars:
+    python_version: "3.10.13"
+    cpu_arch:       "amd64" # Don't change this for ARM
+
+    al2_packages:
+      - '@Development tools'
+      - git
+      - wget
+      - openssl11
+      - openssl11-devel
+      - libffi-devel
+      - bzip2-devel
+
+    el9_packages:
+      - '@Development tools'
+      - git
+      - wget
+      - openssl-devel
+      - libffi-devel
+      - bzip2-devel
+      - postgresql-13*
+#      - python3.11* too easy
+
+  tasks:
+  - name: Bail if we're root
+    when: ansible_user_id == "root"
+    ansible.builtin.fail:
+      msg: >
+        "This playbook assumes it's running as as a normal user with
+        sudo access. One should have been created by the bootstrap script.
+        Bad things will happen if you run it as root"
+
+  - name: Cron job to run ourselves
+    ansible.builtin.cron:
+      name: "Run Ansible every hour"
+      user: "ansibleuser"
+      special_time: "hourly"
+      job:  "/home/ansibleuser/run_ansible.sh"
+
+  - name: Make sure our path is good in cron
+    ansible.builtin.cron:
+      name: "PATH"
+      user: "ansibleuser"
+      env:  true
+      job:  "/home/ansibleuser/.local/bin:/home/ansibleuser/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin"
+
+  - name: Set arch so we can pick the right packages
+    when: ansible_architecture == "aarch64"
+    ansible.builtin.set_fact:
+      cpu_arch: "arm64"
+
+  - name: Ensure ec2-user
+    become: true
+    ansible.builtin.user:
+      name: "ec2-user"
+    # Not a thing on other EL
+
+  - name: Install SSM on other EL distros
+    become: true
+    when: ansible_distribution != "Amazon"
+    ansible.builtin.dnf:
+      name: "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_{{ cpu_arch }}/amazon-ssm-agent.rpm"
+    ignore_errors: true
+    # This is a whole can of worms between Amazon not signing this RPM
+    # like a normal company and EL9+ not accepting SHA1 signatures
+    # Ignore failure for now
+
+# The rest isn't really bootstrap but is included for now
+
+  - name: Ensure proto data directory exists
+    become: true
+    ansible.builtin.file:
+      path:  "/data/proto"
+      state: "directory"
+      owner: "ec2-user"
+      group: "ec2-user"
+      mode:  '0755'
+
+  - name: Configure proto data dir mount
+    become: true
+    ansible.posix.mount:
+      path:   "/data/proto"
+      src:    "/dev/xvdp" # This path might change
+      opts:   "defaults,nofail"
+      fstype: "ext4"
+      state:  "unmounted" # IDC if it's mounted for this
+
+  - name: Ensure base packages are installed for AL2
+    become: true
+    when: >
+      ansible_distribution == "Amazon" and
+      ansible_distribution_major_version == "2"
+    ansible.builtin.dnf:
+      name:   "{{ al2_packages }}"
+      state:  "present"
+
+  - name: Ensure base packages are installed for EL9
+    become: true
+    when: >
+      ansible_distribution != "Amazon" and
+      ansible_distribution_major_version == "9"
+    ansible.builtin.dnf:
+      name:   "{{ el9_packages }}"
+      state:  "present"
+
+  - name: Ensure postgres 13 is installed on AL
+    become: true
+    when:   ansible_distribution == "Amazon"
+    ansible.builtin.command:
+      cmd:      "amazon-linux-extras install -y postgresql13"
+      creates:  "/usr/bin/psql"
+
+  - name: Do recon on our python interpreter
+    ansible.builtin.command:
+      cmd:  "/usr/local/bin/python{{ python_version.split('.')[:2] | join('.') }} --version"
+    register:       installed_python_version
+    ignore_errors:  true
+    # This won't work the first time and that's ok
+
+  # Tasks in this block aren't idempotent but the block itself is if successful
+  - name: Grab, build, and install python
+    when: >
+      installed_python_version is undefined or
+      installed_python_version != python_version
+    block:
+      - name: Download and untar source
+        ansible.builtin.unarchive:
+          src: "https://www.python.org/ftp/python/{{ python_version }}/Python-{{ python_version }}.tgz"
+          dest:       "/tmp/"
+          creates:    "/tmp/Python-{{ python_version }}"
+          remote_src: true
+        # TODO Check against known good sigs/sha/etc
+        # Package manager would do this part for us
+
+      - name: Hack configure script before build
+        ansible.builtin.replace:
+          path:     "/tmp/Python-{{ python_version }}/configure"
+          regexp:   'PKG_CONFIG openssl '
+          replace:  'PKG_CONFIG openssl11 '
+        # 0 effect on build success. Yay
+
+      - name: Run configure script
+        ansible.builtin.command:
+          cmd:    "./configure --enable-optimizations"
+          chdir:  "/tmp/Python-{{ python_version }}"
+
+      - name: Make clean in case this is a second run after failure
+        ansible.builtin.command:
+          cmd:    "make clean"
+          chdir:  "/tmp/Python-{{ python_version }}"
+
+      - name: Compile it
+        ansible.builtin.command:
+          cmd:    "make"
+          chdir:  "/tmp/Python-{{ python_version }}"
+
+      - name: Install it
+        become: true
+        ansible.builtin.command:
+          cmd:    "make install"
+          chdir:  "/tmp/Python-{{ python_version }}"
+        # Not sure what the deal is with altinstall but we don't here
+
+  - name: If we made it here, mark this box as bootstrapped
+    ansible.builtin.file:
+      path:  "/home/ansibleuser/bootstrap_complete"
+      state: "touch"
+      mode:  '0644'
