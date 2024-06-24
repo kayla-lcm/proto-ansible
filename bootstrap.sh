@@ -24,7 +24,7 @@ PATH=/home/ansibleuser/.local/bin:/home/ansibleuser/bin:/usr/local/bin:/usr/bin:
 if python3 -m pip -V; then
   : # noop
 else
-  python -m ensurepip --upgrade
+  python3 -m ensurepip --upgrade
 fi
 
 if ansible --version; then

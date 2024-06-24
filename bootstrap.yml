@@ -34,7 +34,11 @@
         sudo access. One should have been created by the bootstrap script.
         Bad things will happen if you run it as root"
 
+  # AL 2023 needs a systemd timer instead
   - name: Cron job to run ourselves
+    when: >
+      ansible_distribution != "Amazon" and
+      ansible_distribution_major_version != "2023"
     ansible.builtin.cron:
       name: "Run Ansible every hour"
       user: "ansibleuser"
@@ -116,7 +120,7 @@
 
   - name: Do recon on our python interpreter
     ansible.builtin.command:
-      cmd:  "/usr/local/bin/python{{ python_version.split('.')[:2] | join('.') }} --version"
+      cmd:  "/usr/local/bin/python{{ python_version.split('.')[:2] | join('.') }} -c 'import platform; print(platform.python_version())'"
     register:       installed_python_version
     ignore_errors:  true
     # This won't work the first time and that's ok
@@ -125,7 +129,7 @@
   - name: Grab, build, and install python
     when: >
       installed_python_version is undefined or
-      installed_python_version != python_version
+      installed_python_version.stdout != python_version
     block:
       - name: Download and untar source
         ansible.builtin.unarchive:
@@ -167,6 +171,8 @@
 
   - name: If we made it here, mark this box as bootstrapped
     ansible.builtin.file:
-      path:  "/home/ansibleuser/bootstrap_complete"
-      state: "touch"
-      mode:  '0644'
+      path:              "/home/ansibleuser/bootstrap_complete"
+      state:             "touch"
+      access_time:       "preserve"
+      modification_time: "preserve"
+      mode:              '0644'
