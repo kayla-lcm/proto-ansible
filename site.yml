@@ -1,0 +1,17 @@
+---
+- hosts: localhost
+  connection: local
+  become: true
+
+  vars_files:
+    - vars.yml
+
+
+  roles:
+    # External
+    - ansible-role-nginx
+
+    # Ours
+    - common
+    - compile_python
+    - website_plz

@@ -42,7 +42,7 @@ curl https://raw.githubusercontent.com/kayla-lcm/proto-ansible/main/bootstrap.ym
 # Verify and run base playbook
 if ssh-keygen -Y verify -f ~/bootstrap_signature -I kayla@lastcallmedia.com \
 -n file -s bootstrap.yml.sig < bootstrap.yml; then
-  ansible-playbook -i localhost bootstrap.yml
+  ansible-playbook -i localhost, bootstrap.yml
 else
   echo "Something went horribly wrong. The playbook's signature is invalid"
   exit 1

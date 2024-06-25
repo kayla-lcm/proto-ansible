@@ -1,0 +1,47 @@
+# common
+al2_packages:
+  - '@Development tools'
+  - git
+  - wget
+  - openssl11
+  - openssl11-devel
+  - libffi-devel
+  - bzip2-devel
+el9_packages:
+  - '@Development tools'
+  - git
+  - wget
+  - openssl-devel
+  - libffi-devel
+  - bzip2-devel
+  - postgresql-13*
+#  - python3.11*
+
+# website
+#website_content: >
+#  "In the beginning the Universe was created. This had made many people very
+#  angry and has been widely regarded as a bad move."
+
+# compile_python
+python_version: 3.10.13
+
+# nginx
+nginx_modules:
+  - geoip
+  - image-filter
+  - njs
+  - perl
+  - xslt
+nginx_service_modify: true
+nginx_service_timeout: 95
+nginx_logrotate_conf_enable: true
+nginx_logrotate_conf:
+  paths: /var/log/nginx/*.log
+  options:
+    - daily
+    - missingok
+    - rotate 14
+    - compress
+    - delaycompress
+    - notifempty
+    - sharedscripts
