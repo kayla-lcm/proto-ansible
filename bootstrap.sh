@@ -45,7 +45,7 @@ if ssh-keygen -Y verify -f ~/bootstrap_signature -I kayla@lastcallmedia.com \
   ansible-playbook -i localhost bootstrap.yml
 else
   echo "Something went horribly wrong. The playbook's signature is invalid"
-  exit
+  exit 1
 fi
 
 EOF
