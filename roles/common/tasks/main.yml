@@ -1,0 +1,24 @@
+- name: Ensure base packages are installed for AL2
+  become: true
+  when: >
+    ansible_distribution == "Amazon" and
+    ansible_distribution_major_version == "2"
+  ansible.builtin.dnf:
+    name:   "{{ al2_packages }}"
+    state:  "present"
+
+- name: Ensure base packages are installed for EL9
+  become: true
+  when: >
+    ansible_distribution != "Amazon" and
+    ansible_distribution_major_version == "9"
+  ansible.builtin.dnf:
+    name:   "{{ el9_packages }}"
+    state:  "present"
+
+- name: Ensure postgres 13 is installed on AL
+  become: true
+  when:   ansible_distribution == "Amazon"
+  ansible.builtin.command:
+    cmd:      "amazon-linux-extras install -y postgresql13"
+    creates:  "/usr/bin/psql"

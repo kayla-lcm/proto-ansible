@@ -1,0 +1,8 @@
+- name: Place index.html from template
+  ansible.builtin.template:
+    src:   "index.html.j2"
+    dest:  "/usr/share/nginx/html/index.html" 
+    owner: "root"
+    group: "root"
+    mode:  '0644'
+
