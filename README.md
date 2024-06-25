@@ -15,6 +15,6 @@ You can do that with `ssh-keygen -Y sign -f ~/.ssh/<privkey> -n file bootstrap.y
 #### Plain Old Ansible
 Differs a little since we're still not using ssh and instead all tasks are local tasks
 
-To run it, be `root` and then: `ansible-playbook -i localhost, site.yml`
+To run it, be `root` or have `sudo` and then: `ansible-playbook -i localhost, site.yml`
 
-Also contains a demo of an external role. In this case to install nginx
+Also contains a demo of an external role. In this case to install nginx. This role is included here as a git submodule. Use `git clone --recursive` to make sure it gets pulled too
